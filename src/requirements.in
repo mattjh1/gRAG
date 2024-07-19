@@ -1,0 +1,31 @@
+# API
+fastapi
+fastapi-pagination
+
+# database
+neo4j
+
+# UI
+chainlit
+
+# configuration management 
+python-dotenv
+pydantic-settings
+
+# Orchestration
+langchain
+langchain-community
+langchain-experimental
+langchain-openai
+openai
+
+# file content parsing
+tika
+
+# logging
+loguru
+
+# misc
+uuid6
+tqdm
+yfiles_jupyter_graphs
