@@ -29,6 +29,5 @@ The `hybrid` retriever is a whole lot simpler, when creating the graph database 
 ### References
 
 [One of many inspiring blog posts at Neo4j developer blogs](https://neo4j.com/developer-blog/global-graphrag-neo4j-langchain/)
-[
-From Local to Global: A Graph RAG Approach to Query-Focused Summarization
-](https://arxiv.org/abs/2404.16130)
+
+[From Local to Global: A Graph RAG Approach to Query-Focused Summarization](https://arxiv.org/abs/2404.16130)
