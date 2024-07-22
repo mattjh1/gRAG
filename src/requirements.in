@@ -19,6 +19,9 @@ langchain-experimental
 langchain-openai
 openai
 
+# testing
+pytest
+
 # file content parsing
 tika
 
