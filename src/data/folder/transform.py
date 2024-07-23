@@ -16,7 +16,7 @@ from tika import parser
 from tqdm import tqdm
 
 from data.graph_transformer_settings import GraphTransformerSettings, default_settings
-from data.processors import semantic_split, split
+from data.processors import semantic_split
 
 TIKA_SERVER_URL: str = os.environ["TIKA_SERVER_URL"]
 
