@@ -8,7 +8,7 @@ from app.core.config import LLMSettings
 from app.util.chains import get_ner_chain
 
 
-def generate_full_text_query(input: str) -> str:
+def _generate_full_text_query(input: str) -> str:
     """
     Generate a full-text search query for a given input string.
 
@@ -64,7 +64,9 @@ def structured_retriever(question: str) -> str:
         """
 
         # Execute the query and get the response
-        response = store.graph.query(query, {"query": generate_full_text_query(entity)})
+        response = store.graph.query(
+            query, {"query": _generate_full_text_query(entity)}
+        )
 
         # Append the query results to the final result
         result += "\n".join([el["output"] for el in response])
@@ -92,6 +94,6 @@ def super_retriever(question: str) -> str:
     final_data = f"""Structured data:
     {structured_data}
     Unstructured data:
-    {"#Document ". join(unstructured_data)}
+    {"#Document ".join(unstructured_data)}
    """
     return final_data

@@ -22,8 +22,10 @@ openai
 # testing
 pytest
 
-# file content parsing
+# ETL
 tika
+selenium
+beautifulsoup4
 
 # logging
 loguru

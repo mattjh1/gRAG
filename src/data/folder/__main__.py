@@ -19,10 +19,10 @@ def pipeline(paths: Generator[Path, None, None], embed: bool, graph: bool) -> No
                 logger.info(f"Storing {len(docs)} graph documents in db")
                 db.store_graph(docs)
                 transform.as_vectors_from_graph(db.embeddings)
-                logger.info(f"Embedded Document nodes")
+                logger.info("Embedded Document nodes")
         elif embed:
             transform.as_vectors_from_graph(db.embeddings)
-            logger.info(f"Embedded Document nodes")
+            logger.info("Embedded Document nodes")
         elif graph:
             if docs := transform.as_graph_documents(path, dracula_settings):
                 logger.info(f"Storing {len(docs)} graph documents in db")
