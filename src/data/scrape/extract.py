@@ -26,11 +26,30 @@ class DocURLs(Enum):
 
 
 class DocScraper:
-    def __init__(self, doc_urls: DocURLs):
-        self.doc_urls = doc_urls
-        self.driver = self.initialize_driver()
+    """
+    A class to scrape documentation from various technology websites using Selenium and BeautifulSoup.
 
-    def initialize_driver(self) -> WebDriver:
+    Attributes:
+        doc_urls (DocURLs): An enumeration of documentation URLs to scrape.
+        driver (WebDriver): The Selenium WebDriver instance for browsing web pages.
+
+    Methods:
+        scrape(): Public method to scrape content from the specified documentation URLs.
+        close_driver(): Closes the Selenium WebDriver instance.
+    """
+
+    def __init__(self, doc_urls: DocURLs):
+        """
+        Initializes the DocScraper with the specified documentation URLs.
+
+        Args:
+            doc_urls (DocURLs): An enumeration value specifying the documentation URLs to scrape.
+        """
+        self.doc_urls = doc_urls
+        self.driver = self._initialize_driver()
+
+    def _initialize_driver(self) -> WebDriver:
+        """Initializes and returns a Selenium WebDriver instance with headless configuration."""
         options = webdriver.ChromeOptions()
         options.add_argument("--headless")
         options.add_argument("--disable-gpu")
@@ -38,61 +57,75 @@ class DocScraper:
         driver = webdriver.Chrome(options=options)
         return driver
 
-    def get_subpage_links(
-        self, driver: WebDriver, url: str, subpage_patterns: list[str]
-    ) -> list[str]:
-        driver.get(url)
+    def _get_subpage_links(self, url: str, subpage_patterns: list[str]) -> list[str]:
+        """Retrieves subpage links matching the specified patterns from the given URL."""
+        self.driver.get(url)
         time.sleep(2)  # Wait for the page to load
 
-        # Build the CSS selector string dynamically from the subpage patterns
         css_selector = ", ".join([
             f"a[href^='{pattern}']" for pattern in subpage_patterns
         ])
-        links = driver.find_elements(By.CSS_SELECTOR, css_selector)
+        links = self.driver.find_elements(By.CSS_SELECTOR, css_selector)
         subpage_links = [link.get_attribute("href") for link in links]
+
+        if any(link is None for link in subpage_links):
+            raise ValueError("Encountered a None value in subpage links")
+
         return list(set(subpage_links))  # Remove duplicates
 
-    def scrape_page_content(self, driver: WebDriver, url: str) -> str:
-        driver.get(url)
+    def _scrape_page_content(self, url: str) -> str:
+        """Scrapes and returns the text content of the given URL."""
+        self.driver.get(url)
         time.sleep(2)  # Wait for the page to load
 
-        # Use BeautifulSoup to parse the page content
-        soup = BeautifulSoup(driver.page_source, "html.parser")
+        soup = BeautifulSoup(self.driver.page_source, "html.parser")
         return soup.get_text()
 
     def _scrape_angular(self, urls: list[str]) -> list[str]:
+        """Scrapes content specifically from Angular documentation URLs."""
         subpage_patterns = ["/api/", "/cli/", "/errors/", "/extended-diagnostics/"]
         return self._scrape_generic(urls, subpage_patterns)
 
     def _scrape_react(self, urls: list[str]) -> list[str]:
+        """Scrapes content specifically from React documentation URLs."""
         subpage_patterns = ["/docs/"]
         return self._scrape_generic(urls, subpage_patterns)
 
     def _scrape_generic(
         self, urls: list[str], subpage_patterns: list[str]
     ) -> list[str]:
-        driver = self.initialize_driver()
-        try:
-            all_content = []
-            for url in urls:
-                main_page_content = self.scrape_page_content(driver, url)
-                all_content.append(main_page_content)
+        """Scrapes content generically based on the given URLs and subpage patterns."""
+        all_content = []
+        for url in urls:
+            main_page_content = self._scrape_page_content(url)
+            all_content.append(main_page_content)
 
-                subpage_links = self.get_subpage_links(driver, url, subpage_patterns)
-                for subpage_url in subpage_links:
-                    subpage_content = self.scrape_page_content(driver, subpage_url)
-                    all_content.append(subpage_content)
-            return all_content
-        finally:
-            driver.quit()
+            subpage_links = self._get_subpage_links(url, subpage_patterns)
+            for subpage_url in subpage_links:
+                subpage_content = self._scrape_page_content(subpage_url)
+                all_content.append(subpage_content)
+        return all_content
 
-    def scrape(self, doc_urls: DocURLs) -> list[str]:
-        if doc_urls == DocURLs.angular:
-            return self.scrape_angular(doc_urls.value)
-        if doc_urls == DocURLs.react:
-            return self.scrape_angular(doc_urls.value)
+    def scrape(self) -> list[str]:
+        """
+        Public method to scrape content from the specified documentation URLs.
+
+        Returns:
+            list[str]: A list of scraped content from the specified documentation source.
+
+        Raises:
+            ValueError: If the documentation source is unsupported.
+        """
+        if self.doc_urls == DocURLs.angular:
+            return self._scrape_angular(self.doc_urls.value)
+        if self.doc_urls == DocURLs.react:
+            return self._scrape_react(self.doc_urls.value)
         else:
             supported_sources = ", ".join([e.name for e in DocURLs])
             raise ValueError(
-                f"Unsupported documentation source: {doc_urls}. Supported sources are: {supported_sources}"
+                f"Unsupported documentation source: {self.doc_urls}. Supported sources are: {supported_sources}"
             )
+
+    def close_driver(self):
+        """Closes the Selenium WebDriver instance."""
+        self.driver.quit()
