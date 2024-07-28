@@ -1,10 +1,12 @@
 import time
 from enum import Enum
+from typing import Generator, Tuple
 
 from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.chrome.webdriver import WebDriver
 from selenium.webdriver.common.by import By
+from tqdm import tqdm
 
 
 class DocURLs(Enum):
@@ -22,6 +24,7 @@ class DocURLs(Enum):
         "https://angular.dev/reference/concepts",
         "https://angular.dev/guide/ngmodules",
     ]
+    # TODO: add more supported doc sites
     react = [""]
 
 
@@ -57,56 +60,62 @@ class DocScraper:
         driver = webdriver.Chrome(options=options)
         return driver
 
-    def _get_subpage_links(self, url: str, subpage_patterns: list[str]) -> list[str]:
+    def _get_subpage_links(
+        self, url: str, subpage_patterns: list[str]
+    ) -> list[str | None]:
         """Retrieves subpage links matching the specified patterns from the given URL."""
         self.driver.get(url)
         time.sleep(2)  # Wait for the page to load
 
-        css_selector = ", ".join([
-            f"a[href^='{pattern}']" for pattern in subpage_patterns
-        ])
+        css_selector = ", ".join(
+            [f"a[href^='{pattern}']" for pattern in subpage_patterns]
+        )
         links = self.driver.find_elements(By.CSS_SELECTOR, css_selector)
         subpage_links = [link.get_attribute("href") for link in links]
 
-        if any(link is None for link in subpage_links):
-            raise ValueError("Encountered a None value in subpage links")
+        # Remove duplicates
+        return list(set(subpage_links))
 
-        return list(set(subpage_links))  # Remove duplicates
-
-    def _scrape_page_content(self, url: str) -> str:
+    def _scrape_page_content(self, url: str) -> Tuple[str, int]:
         """Scrapes and returns the text content of the given URL."""
         self.driver.get(url)
         time.sleep(2)  # Wait for the page to load
 
         soup = BeautifulSoup(self.driver.page_source, "html.parser")
-        return soup.get_text()
+        page_content = soup.get_text()
+        return page_content, len(page_content)
 
-    def _scrape_angular(self, urls: list[str]) -> list[str]:
+    def _scrape_angular(
+        self, urls: list[str]
+    ) -> Generator[Tuple[str, int], None, None]:
         """Scrapes content specifically from Angular documentation URLs."""
         subpage_patterns = ["/api/", "/cli/", "/errors/", "/extended-diagnostics/"]
-        return self._scrape_generic(urls, subpage_patterns)
+        yield from self._scrape(urls, subpage_patterns)
 
-    def _scrape_react(self, urls: list[str]) -> list[str]:
+    def _scrape_react(self, urls: list[str]) -> Generator[Tuple[str, int], None, None]:
         """Scrapes content specifically from React documentation URLs."""
         subpage_patterns = ["/docs/"]
-        return self._scrape_generic(urls, subpage_patterns)
+        yield from self._scrape(urls, subpage_patterns)
 
-    def _scrape_generic(
+    def _scrape(
         self, urls: list[str], subpage_patterns: list[str]
-    ) -> list[str]:
+    ) -> Generator[Tuple[str, int], None, None]:
         """Scrapes content generically based on the given URLs and subpage patterns."""
-        all_content = []
-        for url in urls:
+        for url in tqdm(urls, desc="Scraping main pages"):
             main_page_content = self._scrape_page_content(url)
-            all_content.append(main_page_content)
+            yield main_page_content
 
             subpage_links = self._get_subpage_links(url, subpage_patterns)
-            for subpage_url in subpage_links:
-                subpage_content = self._scrape_page_content(subpage_url)
-                all_content.append(subpage_content)
-        return all_content
+            for subpage_url in tqdm(
+                subpage_links, desc="Scraping subpages", leave=False
+            ):
+                if subpage_url is None:
+                    continue
 
-    def scrape(self) -> list[str]:
+                subpage_content = self._scrape_page_content(subpage_url)
+                yield subpage_content
+
+    def scrape(self) -> Generator[Tuple[str, int], None, None]:
         """
         Public method to scrape content from the specified documentation URLs.
 
@@ -117,9 +126,9 @@ class DocScraper:
             ValueError: If the documentation source is unsupported.
         """
         if self.doc_urls == DocURLs.angular:
-            return self._scrape_angular(self.doc_urls.value)
+            yield from self._scrape_angular(self.doc_urls.value)
         if self.doc_urls == DocURLs.react:
-            return self._scrape_react(self.doc_urls.value)
+            yield from self._scrape_react(self.doc_urls.value)
         else:
             supported_sources = ", ".join([e.name for e in DocURLs])
             raise ValueError(
