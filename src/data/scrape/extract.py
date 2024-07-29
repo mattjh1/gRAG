@@ -1,6 +1,6 @@
 import time
 from enum import Enum
-from typing import Generator, Tuple
+from typing import Any, Generator
 
 from bs4 import BeautifulSoup
 from selenium import webdriver
@@ -76,30 +76,36 @@ class DocScraper:
         # Remove duplicates
         return list(set(subpage_links))
 
-    def _scrape_page_content(self, url: str) -> Tuple[str, int]:
-        """Scrapes and returns the text content of the given URL."""
+    def _scrape_page_content(self, url: str) -> dict[str, Any]:
+        """Scrapes and returns the text content and metadata of the given URL."""
         self.driver.get(url)
         time.sleep(2)  # Wait for the page to load
 
         soup = BeautifulSoup(self.driver.page_source, "html.parser")
         page_content = soup.get_text()
-        return page_content, len(page_content)
+        metadata = {
+            "title": soup.title.string if soup.title else "No title",
+            "url": url,
+            "length": len(page_content),
+        }
+        return {
+            "content": page_content,
+            "metadata": metadata,
+        }
 
-    def _scrape_angular(
-        self, urls: list[str]
-    ) -> Generator[Tuple[str, int], None, None]:
+    def _scrape_angular(self, urls: list[str]) -> Generator[dict[str, Any], None, None]:
         """Scrapes content specifically from Angular documentation URLs."""
         subpage_patterns = ["/api/", "/cli/", "/errors/", "/extended-diagnostics/"]
         yield from self._scrape(urls, subpage_patterns)
 
-    def _scrape_react(self, urls: list[str]) -> Generator[Tuple[str, int], None, None]:
+    def _scrape_react(self, urls: list[str]) -> Generator[dict[str, Any], None, None]:
         """Scrapes content specifically from React documentation URLs."""
         subpage_patterns = ["/docs/"]
         yield from self._scrape(urls, subpage_patterns)
 
     def _scrape(
         self, urls: list[str], subpage_patterns: list[str]
-    ) -> Generator[Tuple[str, int], None, None]:
+    ) -> Generator[dict[str, Any], None, None]:
         """Scrapes content generically based on the given URLs and subpage patterns."""
         for url in tqdm(urls, desc="Scraping main pages"):
             main_page_content = self._scrape_page_content(url)
@@ -115,7 +121,7 @@ class DocScraper:
                 subpage_content = self._scrape_page_content(subpage_url)
                 yield subpage_content
 
-    def scrape(self) -> Generator[Tuple[str, int], None, None]:
+    def scrape(self) -> Generator[dict[str, Any], None, None]:
         """
         Public method to scrape content from the specified documentation URLs.
 
