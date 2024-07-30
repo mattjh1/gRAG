@@ -4,6 +4,8 @@ fastapi-pagination
 
 # database
 neo4j
+redis
+redisvl
 
 # UI
 chainlit

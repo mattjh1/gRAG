@@ -7,11 +7,11 @@ from .graph_transformer_settings import (
     ms_graphrag_settings,
 )
 from .processors import semantic_split, split
-from .store import Neo4jGraph, Neo4jStore, Neo4jVector
+from .store import Neo4jGraph, Store, Neo4jVector
 
 __all__ = [
     "Neo4jVector",
-    "Neo4jStore",
+    "Store",
     "Neo4jGraph",
     "semantic_split",
     "split",
