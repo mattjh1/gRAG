@@ -1,12 +1,11 @@
 import json
 import os
 from enum import Enum
-from pathlib import Path
 from typing import Optional, Union
 
 from loguru import logger
 from pydantic import AnyHttpUrl, BaseModel, Field, field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings
 
 
 class ModeEnum(str, Enum):
