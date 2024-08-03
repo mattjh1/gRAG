@@ -37,6 +37,7 @@ class LLMSettings(BaseModel):
         openai_models = [
             "gpt-3.5-turbo",
             "gpt-4o",
+            "gpt-4o-mini",
             "gpt-4-turbo",
         ]
         ollama_models = [
