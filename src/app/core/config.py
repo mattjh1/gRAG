@@ -2,7 +2,7 @@ import json
 import os
 from enum import Enum
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Union
 
 from loguru import logger
 from pydantic import AnyHttpUrl, BaseModel, Field, field_validator
@@ -120,12 +120,7 @@ class Config(BaseSettings):
         },
     }
 
-    try:
-        BACKEND_CORS_ORIGINS: list[str] | list[AnyHttpUrl] = json.loads(
-            os.getenv("BACKEND_CORS_ORIGINS", "[*]")
-        )
-    except json.JSONDecodeError as e:
-        logger.error(f"Allowed CORS origin list is not formatted correctly: {e}")
+    BACKEND_CORS_ORIGINS: list[Union[str, AnyHttpUrl]] = Field(default_factory=list)
 
     @field_validator("BACKEND_CORS_ORIGINS")
     def assemble_cors_origins(cls, v: str | list[str]) -> list[str] | str:
@@ -134,7 +129,10 @@ class Config(BaseSettings):
         elif isinstance(v, (list, str)):
             return v
 
-    model_config = SettingsConfigDict(case_sensitive=True, env_file=Path())
+    # model_config = SettingsConfigDict(case_sensitive=True, env_file=Path())
+    class Config:
+        env_file = ".env"
+        case_sensitive = True
 
 
 config = Config()
