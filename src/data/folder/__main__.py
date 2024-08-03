@@ -19,10 +19,10 @@ def pipeline(paths: Generator[Path, None, None], embed: bool, graph: bool) -> No
                 logger.info(f"Storing {len(docs)} graph documents in db")
                 db.store_graph(docs)
                 transform.as_vectors_from_graph(db.embeddings)
-                logger.info(f"Embedded Document nodes")
+                logger.info("Embedded Document nodes")
         elif embed:
             transform.as_vectors_from_graph(db.embeddings)
-            logger.info(f"Embedded Document nodes")
+            logger.info("Embedded Document nodes")
         elif graph:
             if docs := transform.as_graph_documents(path, dracula_settings):
                 logger.info(f"Storing {len(docs)} graph documents in db")
@@ -57,7 +57,7 @@ def pipeline(paths: Generator[Path, None, None], embed: bool, graph: bool) -> No
 )
 @click.option("-e", "--embed", type=bool, required=False, default=False)
 @click.option("-g", "--graph", type=bool, required=False, default=False)
-def ingest(
+def folder(
     directory: str, glob: str, since: Optional[date], embed: bool, graph: bool
 ) -> None:
     """Ingest files from folder as documents."""
@@ -66,4 +66,4 @@ def ingest(
 
 
 if __name__ == "__main__":
-    ingest()
+    folder()

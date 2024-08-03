@@ -1,5 +1,5 @@
 import functools
-import os
+from enum import Enum
 
 from langchain_community.graphs import Neo4jGraph
 from langchain_community.graphs.graph_document import GraphDocument
@@ -10,7 +10,12 @@ from loguru import logger
 from app.core.config import config
 
 
-class Neo4jStore:
+class StoreEnum(str, Enum):
+    neo4j = "neo4j"
+    redis = "redis"
+
+
+class Store:
     def __init__(
         self,
         graph: Neo4jGraph,
@@ -31,7 +36,7 @@ class Neo4jStore:
 
 
 @functools.lru_cache(maxsize=1)
-def get_default_store(show_embedding_progress: bool = True) -> Neo4jStore:
+def get_default_store(show_embedding_progress: bool = True) -> Store:
     from langchain_community.embeddings import OllamaEmbeddings
 
     graph = Neo4jGraph(
@@ -53,7 +58,7 @@ def get_default_store(show_embedding_progress: bool = True) -> Neo4jStore:
         embedding=embeddings,
     )
 
-    return Neo4jStore(
+    return Store(
         graph=graph,
         embeddings=embeddings,
         vectorstore=vectorstore,

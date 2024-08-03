@@ -32,11 +32,12 @@ class LLMSettings(BaseModel):
             "mistralai/mistral-7b-instruct",
             "mistralai/mixtral-8x7b-instruct",
             "openai/gpt-4o",
-            "openai/gpt-4o-mini"
+            "openai/gpt-4o-mini",
         ]
         openai_models = [
             "gpt-3.5-turbo",
             "gpt-4o",
+            "gpt-4o-mini",
             "gpt-4-turbo",
         ]
         ollama_models = [
@@ -73,6 +74,24 @@ class LLMSettings(BaseModel):
 
 
 class Config(BaseSettings):
+    def print_config(self) -> None:
+        """
+        Print the configuration settings to stdout, masking sensitive information.
+        """
+        config_dict = self.model_dump()
+        if "OPENROUTER_API_KEY" in config_dict:
+            config_dict["OPENROUTER_API_KEY"] = "***MASKED***"
+        if "NEO4J_USERNAME" in config_dict:
+            config_dict["NEO4J_USERNAME"] = "***MASKED***"
+        if "NEO4J_PASSWORD" in config_dict:
+            config_dict["NEO4J_PASSWORD"] = "***MASKED***"
+        if "PROVIDERS" in config_dict:
+            for provider in config_dict["PROVIDERS"].values():
+                if "api_key" in provider:
+                    provider["api_key"] = "***MASKED***"
+
+        logger.info(json.dumps(config_dict, indent=2))
+
     MODE: ModeEnum = ModeEnum.development
     LLM_SETTINGS: LLMSettings = LLMSettings(
         provider=os.getenv("LLM_API_PROVIDER", "openrouter"),
@@ -93,13 +112,12 @@ class Config(BaseSettings):
             "base_url": OPENROUTER_API_BASE,
             "api_key": OPENROUTER_API_KEY,
         },
+        "ollama": {"base_url": f"{OLLAMA_API_BASE}/v1", "api_key": "ollama"},
         # TODO: make OpenAI compatible
         "openai": {
             "base_url": "https://api.openai.com",
             "api_key": "your_openai_api_key",
         },
-        # TODO: add ollama...
-        "ollama": {"base_url": f"{OLLAMA_API_BASE}/v1", "api_key": "ollama"},
     }
 
     try:
@@ -117,20 +135,6 @@ class Config(BaseSettings):
             return v
 
     model_config = SettingsConfigDict(case_sensitive=True, env_file=Path())
-
-    def print_config(self) -> None:
-        """
-        Print the configuration settings to stdout, masking sensitive information.
-        """
-        config_dict = self.model_dump()
-        if "OPENROUTER_API_KEY" in config_dict:
-            config_dict["OPENROUTER_API_KEY"] = "***MASKED***"
-        if "PROVIDERS" in config_dict:
-            for provider in config_dict["PROVIDERS"].values():
-                if "api_key" in provider:
-                    provider["api_key"] = "***MASKED***"
-
-        logger.info(json.dumps(config_dict, indent=2))
 
 
 config = Config()

@@ -21,12 +21,18 @@ anyio==4.4.0
 asttokens==2.4.1
     # via stack-data
 attrs==23.2.0
-    # via aiohttp
+    # via
+    #   aiohttp
+    #   outcome
+    #   trio
+beautifulsoup4==4.12.3
+    # via -r requirements.in
 certifi==2024.6.2
     # via
     #   httpcore
     #   httpx
     #   requests
+    #   selenium
 chainlit==0.1.0
     # via -r requirements.in
 charset-normalizer==3.3.2
@@ -35,6 +41,8 @@ click==8.1.7
     # via
     #   typer
     #   uvicorn
+coloredlogs==15.0.1
+    # via redisvl
 comm==0.2.2
     # via ipywidgets
 dataclasses-json==0.6.7
@@ -63,6 +71,7 @@ h11==0.14.0
     # via
     #   httpcore
     #   uvicorn
+    #   wsproto
 httpcore==1.0.5
     # via httpx
 httptools==0.6.1
@@ -71,12 +80,15 @@ httpx==0.27.0
     # via
     #   fastapi
     #   openai
+humanfriendly==10.0
+    # via coloredlogs
 idna==3.7
     # via
     #   anyio
     #   email-validator
     #   httpx
     #   requests
+    #   trio
     #   yarl
 iniconfig==2.0.0
     # via pytest
@@ -144,6 +156,7 @@ numpy==1.26.4
     # via
     #   langchain
     #   langchain-community
+    #   redisvl
 openai==1.35.3
     # via
     #   -r requirements.in
@@ -152,6 +165,8 @@ orjson==3.10.5
     # via
     #   fastapi
     #   langsmith
+outcome==1.3.0.post0
+    # via trio
 packaging==24.1
     # via
     #   langchain-core
@@ -178,6 +193,7 @@ pydantic==2.7.4
     #   langsmith
     #   openai
     #   pydantic-settings
+    #   redisvl
 pydantic-core==2.18.4
     # via pydantic
 pydantic-settings==2.3.3
@@ -186,6 +202,8 @@ pygments==2.18.0
     # via
     #   ipython
     #   rich
+pysocks==1.7.1
+    # via urllib3
 pytest==8.3.1
     # via -r requirements.in
 python-dotenv==1.0.1
@@ -202,7 +220,14 @@ pyyaml==6.0.1
     #   langchain
     #   langchain-community
     #   langchain-core
+    #   redisvl
     #   uvicorn
+redis==5.0.7
+    # via
+    #   -r requirements.in
+    #   redisvl
+redisvl==0.2.3
+    # via -r requirements.in
 regex==2024.5.15
     # via tiktoken
 requests==2.32.3
@@ -214,6 +239,8 @@ requests==2.32.3
     #   tiktoken
 rich==13.7.1
     # via typer
+selenium==4.23.1
+    # via -r requirements.in
 shellingham==1.5.4
     # via typer
 six==1.16.0
@@ -223,6 +250,11 @@ sniffio==1.3.1
     #   anyio
     #   httpx
     #   openai
+    #   trio
+sortedcontainers==2.4.0
+    # via trio
+soupsieve==2.5
+    # via beautifulsoup4
 sqlalchemy==2.0.31
     # via
     #   langchain
@@ -231,11 +263,14 @@ stack-data==0.6.3
     # via ipython
 starlette==0.37.2
     # via fastapi
+tabulate==0.9.0
+    # via redisvl
 tenacity==8.4.1
     # via
     #   langchain
     #   langchain-community
     #   langchain-core
+    #   redisvl
 tika==2.6.0
     # via -r requirements.in
 tiktoken==0.7.0
@@ -250,6 +285,12 @@ traitlets==5.14.3
     #   ipython
     #   ipywidgets
     #   matplotlib-inline
+trio==0.26.0
+    # via
+    #   selenium
+    #   trio-websocket
+trio-websocket==0.11.1
+    # via selenium
 typer==0.12.3
     # via fastapi-cli
 typing-extensions==4.12.2
@@ -259,6 +300,7 @@ typing-extensions==4.12.2
     #   openai
     #   pydantic
     #   pydantic-core
+    #   selenium
     #   sqlalchemy
     #   typer
     #   typing-inspect
@@ -266,8 +308,10 @@ typing-inspect==0.9.0
     # via dataclasses-json
 ujson==5.10.0
     # via fastapi
-urllib3==2.2.2
-    # via requests
+urllib3[socks]==2.2.2
+    # via
+    #   requests
+    #   selenium
 uuid6==2024.1.12
     # via -r requirements.in
 uvicorn[standard]==0.30.1
@@ -278,10 +322,14 @@ watchfiles==0.22.0
     # via uvicorn
 wcwidth==0.2.13
     # via prompt-toolkit
+websocket-client==1.8.0
+    # via selenium
 websockets==12.0
     # via uvicorn
 widgetsnbextension==4.0.11
     # via ipywidgets
+wsproto==1.2.0
+    # via trio-websocket
 yarl==1.9.4
     # via aiohttp
 yfiles-jupyter-graphs==1.7.2

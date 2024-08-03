@@ -52,7 +52,6 @@ async def on_message(message: cl.Message):
     """Handle incoming messages."""
     memory: ConversationBufferMemory = get_session("memory")
     rag_chain: Runnable = get_session("rag_chain")
-    summary_chain: Runnable = get_session("summary_chain")
     query = {"question": message.content}
 
     if memory.chat_memory.messages:
