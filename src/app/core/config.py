@@ -122,7 +122,7 @@ class Config(BaseSettings):
 
     try:
         BACKEND_CORS_ORIGINS: list[str] | list[AnyHttpUrl] = json.loads(
-            os.getenv("BACKEND_CORS_ORIGINS", "[]")
+            os.getenv("BACKEND_CORS_ORIGINS", "[*]")
         )
     except json.JSONDecodeError as e:
         logger.error(f"Allowed CORS origin list is not formatted correctly: {e}")

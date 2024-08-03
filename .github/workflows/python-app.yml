@@ -55,6 +55,5 @@ jobs:
           PROVIDERS_OLLAMA_API_KEY: mocked_providers_ollama_api_key
           PROVIDERS_OPENAI_BASE_URL: https://api.openai.com
           PROVIDERS_OPENAI_API_KEY: mocked_providers_openai_api_key
-          BACKEND_CORS_ORIGINS: ["*"]
         run: |
           pytest
