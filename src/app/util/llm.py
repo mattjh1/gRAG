@@ -1,7 +1,6 @@
 from typing import Optional
 
 from langchain_openai import ChatOpenAI
-from loguru import logger
 
 from app.core.config import LLMSettings, config
 from app.util.ollama_functions import OllamaFunctions
