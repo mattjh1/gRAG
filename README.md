@@ -1,4 +1,4 @@
-# GraphRAG api
+# gRAG
 
 This project was inspired by recent work done in the area of utilizing knowledge graphs to enhance retrieval.
 
