@@ -36,10 +36,13 @@ def structured_retriever(question: str) -> str:
 
     store = get_default_store()
 
-    # Retrieve named entities from the question
-    entities = get_ner_chain(LLMSettings(provider="ollama", model="phi3:14b")).invoke(
-        {"input": question}
-    )
+    # Retrieve named entities from the question (ollama override)
+    # entities = get_ner_chain(LLMSettings(provider="ollama", model="phi3:14b")).invoke(
+    #     {"input": question}
+    # )
+
+    # Retrieve named entities from the question (default: openrouter)
+    entities = get_ner_chain().invoke({"input": question})
 
     for entity in entities.names:
         query = """
