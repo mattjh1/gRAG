@@ -17,7 +17,7 @@ messages = ChatPromptTemplate.from_messages(
     [
         (
             "system",
-            "You are extracting pronoun entities from the text, such as people, places, and organizations.",
+            "You are extracting pronoun entities from the text, such as people, places, and organizations. If the entities are not in english, translate to english.",
         ),
         (
             "human",
