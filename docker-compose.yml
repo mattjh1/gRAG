@@ -54,7 +54,7 @@ services:
   tika:
     container_name: tika
     image: apache/tika:latest
-    platform: linux/arm/v7
+    platform: linux/arm64
     ports:
       - "9998:9998"
     deploy:
