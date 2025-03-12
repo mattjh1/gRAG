@@ -6,6 +6,12 @@ In this project you'll find an ingestion pipeline that streamline getting data f
 
 And there is also the knowledge graph RAG implementation and a `fastAPI` application that serves this content. So far we're mounting a `chainlit` chat application for testing, but adding chains as individual endpoints is planned.
 
+I went more in-depth about things over at my blog, if you want to know more, check out:
+
+- [intro](https://www.mattjh.sh/post/grag-intro/)
+- [ingestion](https://www.mattjh.sh/post/grag-ingestion/)
+- [app](https://www.mattjh.sh/post/grag-app/)
+
 ![Overview diagram](img/overview.png)
 
 ## Data ingest breakdown
