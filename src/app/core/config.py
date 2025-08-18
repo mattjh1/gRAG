@@ -16,11 +16,11 @@ class ModeEnum(str, Enum):
 
 class LLMSettings(BaseModel):
     provider: Optional[str] = Field(
-        default="openrouter", description="The provider for the LLM"
+        default="ollama", description="The provider for the LLM"
     )
     model: Optional[str] = Field(default=None, description="The model for the LLM")
     temperature: Optional[float] = Field(
-        default=0, description="The temperature for the LLM"
+        default=0.1, description="The temperature for the LLM"
     )
 
     @field_validator("model", mode="before")
@@ -45,6 +45,7 @@ class LLMSettings(BaseModel):
             "gemma2:9b",
             "wizardlm2:7b",
             "phi3:14b",
+            "qwen3:30b"
         ]
 
         # If model is None, set a default based on the provider
@@ -54,7 +55,7 @@ class LLMSettings(BaseModel):
             elif provider == "openai":
                 return "gpt-4o"
             elif provider == "ollama":
-                return "phi3:14b"
+                return "qwen3:30b"
 
         if provider == "openrouter" and v not in openrouter_models:
             raise ValueError(
@@ -92,11 +93,13 @@ class Config(BaseSettings):
         logger.info(json.dumps(config_dict, indent=2))
 
     MODE: ModeEnum = ModeEnum.development
-    LLM_SETTINGS: LLMSettings = LLMSettings(
-        provider=os.getenv("LLM_API_PROVIDER", "openrouter"),
-        model=os.getenv("LLM_MODEL_ID", "openai/gpt-4o"),
-        temperature=0,
-    )
+    @property
+    def LLM_SETTINGS(self) -> LLMSettings:
+        return LLMSettings(
+            provider=self.LLM_API_PROVIDER,
+            model=self.LLM_MODEL_ID,
+            temperature=0,
+        )
     PROJECT_NAME: str = "rag-api"
     API_STR: str = "/api"
     OPENROUTER_API_BASE: str = os.environ["OPENROUTER_API_BASE"]
@@ -106,18 +109,29 @@ class Config(BaseSettings):
     NEO4J_URI: str = os.environ["NEO4J_URI"]
     NEO4J_USERNAME: str = os.environ["NEO4J_USERNAME"]
     NEO4J_PASSWORD: str = os.environ["NEO4J_PASSWORD"]
-    PROVIDERS: dict = {
-        "openrouter": {
-            "base_url": OPENROUTER_API_BASE,
-            "api_key": OPENROUTER_API_KEY,
-        },
-        "ollama": {"base_url": f"{OLLAMA_API_BASE}/v1", "api_key": "ollama"},
-        # TODO: make OpenAI compatible
-        "openai": {
-            "base_url": "https://api.openai.com",
-            "api_key": "your_openai_api_key",
-        },
-    }
+    
+    # Add the missing fields that were causing validation errors
+    LLM_API_PROVIDER: str = Field(default="openrouter", description="LLM API provider")
+    LLM_MODEL_ID: str = Field(default="openai/gpt-4o", description="LLM model ID")
+    NEO4J_VECTOR_INDEX: str = Field(default="vector", description="Neo4j vector index name")
+    NEO4J_KEYWORD_INDEX: str = Field(default="keyword", description="Neo4j keyword index name")
+    TIKA_SERVER_URL: str = Field(default="http://localhost:9998", description="Tika server URL for content parsing")
+    FOLDER_INGEST_DIR: str = Field(default="./src/data/docs", description="Directory for folder ingestion")
+    
+    @property
+    def PROVIDERS(self) -> dict:
+        return {
+            "openrouter": {
+                "base_url": self.OPENROUTER_API_BASE,
+                "api_key": self.OPENROUTER_API_KEY,
+            },
+            "ollama": {"base_url": f"{self.OLLAMA_API_BASE}/v1", "api_key": "ollama"},
+            # TODO: make OpenAI compatible
+            "openai": {
+                "base_url": "https://api.openai.com",
+                "api_key": "your_openai_api_key",
+            },
+        }
 
     BACKEND_CORS_ORIGINS: list[Union[str, AnyHttpUrl]] = Field(default_factory=list)
 
