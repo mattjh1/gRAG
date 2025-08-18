@@ -1,9 +1,9 @@
 import functools
 from enum import Enum
 
-from langchain_community.graphs import Neo4jGraph
-from langchain_community.graphs.graph_document import GraphDocument
-from langchain_community.vectorstores.neo4j_vector import Neo4jVector
+from langchain_neo4j import Neo4jGraph
+from langchain_neo4j.graphs.graph_document import GraphDocument
+from langchain_neo4j import Neo4jVector
 from langchain_core.embeddings import Embeddings
 from loguru import logger
 
@@ -36,8 +36,8 @@ class Store:
 
 
 @functools.lru_cache(maxsize=1)
-def get_default_store(show_embedding_progress: bool = True) -> Store:
-    from langchain_community.embeddings import OllamaEmbeddings
+def get_default_store() -> Store:
+    from langchain_ollama import OllamaEmbeddings
 
     graph = Neo4jGraph(
         url=config.NEO4J_URI,
@@ -48,7 +48,6 @@ def get_default_store(show_embedding_progress: bool = True) -> Store:
     embeddings = OllamaEmbeddings(
         base_url=config.OLLAMA_API_BASE,
         model=config.EMB_MODEL_ID,
-        show_progress=show_embedding_progress,
     )
 
     vectorstore = Neo4jVector(

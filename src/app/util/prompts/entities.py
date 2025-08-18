@@ -1,8 +1,6 @@
 # Extract entities from text
-from langchain.pydantic_v1 import BaseModel
+from pydantic import BaseModel, Field
 from langchain_core.prompts.chat import ChatPromptTemplate
-from langchain_core.pydantic_v1 import Field
-
 
 class Entities(BaseModel):
     """Identifying information about entities."""

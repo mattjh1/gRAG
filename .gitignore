@@ -9,6 +9,9 @@ neo4j/backup/*
 # General
 .DS_Store
 
+# Chainlit
+.chainlit/*
+
 
 ##########################################
 # TEMPLATE

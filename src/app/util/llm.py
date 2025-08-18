@@ -1,14 +1,14 @@
 from typing import Optional
 
+from langchain_ollama import ChatOllama
 from langchain_openai import ChatOpenAI
 
 from app.core.config import LLMSettings, config
-from app.util.ollama_functions import OllamaFunctions
 
 
 class LLMClientManager:
     _instance: Optional[ChatOpenAI] = None
-    _ollama_instance: Optional[OllamaFunctions] = None
+    _ollama_instance: Optional[ChatOllama] = None
 
     @classmethod
     def get_instance(cls, settings: Optional[LLMSettings] = None) -> ChatOpenAI:
@@ -19,7 +19,7 @@ class LLMClientManager:
     @classmethod
     def get_ollama_instance(
         cls, settings: Optional[LLMSettings] = None
-    ) -> OllamaFunctions:
+    ) -> ChatOllama:
         if cls._ollama_instance is None:
             cls._ollama_instance = cls._create_ollama_client(settings)
         return cls._ollama_instance
@@ -35,13 +35,12 @@ class LLMClientManager:
             "model": settings.model,
             "temperature": settings.temperature,
         }
-
         return ChatOpenAI(**options)
 
     @classmethod
     def _create_ollama_client(
         cls, settings: Optional[LLMSettings] = None
-    ) -> OllamaFunctions:
+    ) -> ChatOllama:
         settings = settings or config.LLM_SETTINGS
 
         if settings.provider == "ollama":
@@ -50,12 +49,11 @@ class LLMClientManager:
                 "model": settings.model,
                 "temperature": settings.temperature,
             }
-            return OllamaFunctions(format="json", **options)
+            return ChatOllama(**options)
         else:
             raise ValueError("Provider must be set to `ollama` to get `ollama` client")
 
 
 get_llm_instance = LLMClientManager.get_instance
 
-# use this hack to use openai function calling with ollama models
 get_ollama_instance = LLMClientManager.get_ollama_instance

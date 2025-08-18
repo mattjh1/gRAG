@@ -18,7 +18,11 @@ pydantic-settings
 langchain
 langchain-community
 langchain-experimental
+langchain-neo4j
 langchain-openai
+langchain_ollama
+langgraph
+langgraph-cli
 openai
 
 # testing
