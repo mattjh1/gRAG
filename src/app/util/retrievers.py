@@ -63,7 +63,7 @@ def structured_retriever(question: str) -> str:
         return ""
 
 
-def _extract_entities_from_question(question: str) -> List[str]:
+def _extract_entities_from_question(question: str) -> list[str]:
     """Extract named entities from the question using various strategies."""
     try:
         entities = get_ner_chain().invoke({"input": question})
@@ -71,8 +71,7 @@ def _extract_entities_from_question(question: str) -> List[str]:
 
         # Fallback: extract from question itself if no entities found
         if not entity_names:
-            logger.warning(
-                "No entities extracted from NER, using fallback extraction")
+            logger.warning("No entities extracted from NER, using fallback extraction")
             entity_names = _fallback_entity_extraction(question)
 
         # Clean and deduplicate entities
@@ -83,7 +82,7 @@ def _extract_entities_from_question(question: str) -> List[str]:
         return _fallback_entity_extraction(question)
 
 
-def _parse_entity_response(entities) -> List[str]:
+def _parse_entity_response(entities) -> list[str]:
     """Parse entities from different response types."""
     entity_names = []
 
@@ -97,7 +96,7 @@ def _parse_entity_response(entities) -> List[str]:
     return entity_names
 
 
-def _extract_from_tool_calls(tool_calls) -> List[str]:
+def _extract_from_tool_calls(tool_calls) -> list[str]:
     """Extract entity names from tool calling responses."""
     entity_names = []
     for tool_call in tool_calls:
@@ -109,7 +108,7 @@ def _extract_from_tool_calls(tool_calls) -> List[str]:
     return entity_names
 
 
-def _parse_content_response(content: str) -> List[str]:
+def _parse_content_response(content: str) -> list[str]:
     """Parse entities from AIMessage content using various strategies."""
     if not content:
         return []
@@ -131,7 +130,7 @@ def _parse_content_response(content: str) -> List[str]:
     return re.findall(r"\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b", content)
 
 
-def _try_json_parsing(content: str) -> List[str]:
+def _try_json_parsing(content: str) -> list[str]:
     """Attempt to parse entities from JSON content."""
     try:
         if content.startswith(("{", "[")):
@@ -145,7 +144,7 @@ def _try_json_parsing(content: str) -> List[str]:
     return []
 
 
-def _try_regex_patterns(content: str) -> List[str]:
+def _try_regex_patterns(content: str) -> list[str]:
     """Try to extract entities using regex patterns."""
     patterns = [
         r"(?:entities|names):\s*([^\n]+)",
@@ -162,14 +161,17 @@ def _try_regex_patterns(content: str) -> List[str]:
     return []
 
 
-def _fallback_entity_extraction(question: str) -> List[str]:
+def _fallback_entity_extraction(question: str) -> list[str]:
     """Fallback method to extract potential entities from question text."""
     words = question.split()
-    return [word.strip(".,!?") for word in words if word.strip(
-        ".,!?").istitle() and len(word) > 2]
+    return [
+        word.strip(".,!?")
+        for word in words
+        if word.strip(".,!?").istitle() and len(word) > 2
+    ]
 
 
-def _clean_entity_names(entity_names: List[str]) -> List[str]:
+def _clean_entity_names(entity_names: list[str]) -> list[str]:
     """Clean and deduplicate entity names."""
     cleaned = []
     seen = set()
@@ -187,7 +189,7 @@ def _clean_entity_names(entity_names: List[str]) -> List[str]:
     return cleaned
 
 
-def _query_entity_neighborhoods(store, entity_names: List[str]) -> str:
+def _query_entity_neighborhoods(store, entity_names: list[str]) -> str:
     """Query the graph database for entity neighborhoods."""
     # Optimized query with better performance
     query = """
@@ -221,7 +223,8 @@ def _query_entity_neighborhoods(store, entity_names: List[str]) -> str:
     for entity in entity_names:
         try:
             response = store.graph.query(
-                query, {"query": generate_full_text_query(entity)})
+                query, {"query": generate_full_text_query(entity)}
+            )
 
             entity_results = [el["output"] for el in response if el["output"]]
             if entity_results:
