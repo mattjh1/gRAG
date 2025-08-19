@@ -67,9 +67,8 @@ async def smalltalk(action_input: str) -> str:
 
 
 @tool("Resolve Ambiguity")
-async def resolve_ambiguity(
-    action_input: str, callbacks: Callbacks | None = None
-) -> str:
+async def resolve_ambiguity(action_input: str,
+                            callbacks: Callbacks | None = None) -> str:
     """Useful when you need to resolve ambiguity (pronouns) in the question or text.
     The action input should be a question or text that contains ambiguous pronouns."""
     return await chains.get_condense_chain().ainvoke(
@@ -118,4 +117,3 @@ if __name__ == "__main__":
     question = "Who is Dracula?"
     res = asyncio.run(search_database(question))  # type: ignore
     logger.info(res)
-

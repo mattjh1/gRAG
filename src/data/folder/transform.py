@@ -45,7 +45,10 @@ def parse_file(path: Path) -> list[Document]:
     if len(chunks) >= 3:
         sample_chunks = random.sample(chunks, 3)
         formatted_chunks = "\n\n".join(
-            f"Sample {i + 1}:\n{chunk.page_content}"
+            f"Sample {
+                i +
+                1}:\n{
+                chunk.page_content}"
             for i, chunk in enumerate(sample_chunks)
         )
         logger.info(f"Chunk excerpt:\n\n{formatted_chunks}")
@@ -82,13 +85,14 @@ def as_graph_documents(
     page: Path, settings: GraphTransformerSettings = default_settings
 ) -> list[GraphDocument]:
     """Convert files at paths to LangChain GraphDocument object."""
-    from app.util import get_llm_instance
+    from app.util import get_ollama_instance
 
     docs = parse_file(page)
     if not docs:
         return []
 
-    llm = get_llm_instance()
+    # llm = get_llm_instance()
+    llm = get_ollama_instance()
     llm_transformer = LLMGraphTransformer(
         llm=llm,
         allowed_nodes=settings["allowed_nodes"],
@@ -101,8 +105,10 @@ def as_graph_documents(
     graph_documents = []
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = [
-            executor.submit(process_document, doc, llm_transformer) for doc in docs
-        ]
+            executor.submit(
+                process_document,
+                doc,
+                llm_transformer) for doc in docs]
 
         for future in tqdm(
             as_completed(futures),

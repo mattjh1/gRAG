@@ -1,5 +1,6 @@
-from typing import Generator, Any
 from abc import ABC, abstractmethod
+from typing import Any, Generator
+
 from langchain_core.documents import Document
 
 

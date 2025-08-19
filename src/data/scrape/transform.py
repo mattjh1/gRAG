@@ -62,8 +62,7 @@ class Transformer:
             raise ValueError("Database not supported")
 
     def _as_documents(
-        self, data: Generator[dict[str, Any], None, None]
-    ) -> list[Document]:
+            self, data: Generator[dict[str, Any], None, None]) -> list[Document]:
         return list(self.transform_all(data))
 
     def _as_graph_documents(
@@ -85,9 +84,10 @@ class Transformer:
         graph_documents = []
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             futures = [
-                executor.submit(self.process_document, doc, llm_transformer)
-                for doc in docs
-            ]
+                executor.submit(
+                    self.process_document,
+                    doc,
+                    llm_transformer) for doc in docs]
 
             for future in tqdm(
                 as_completed(futures),
@@ -102,9 +102,8 @@ class Transformer:
 
         return graph_documents
 
-    def transform(
-        self, content: str, metadata: dict
-    ) -> Union[list[Document], Document]:
+    def transform(self, content: str,
+                  metadata: dict) -> Union[list[Document], Document]:
         """
         Transform content and metadata into Document instances.
 

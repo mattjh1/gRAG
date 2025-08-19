@@ -4,7 +4,9 @@ from langchain_community.document_loaders import DocusaurusLoader
 from langchain_core.documents import Document
 
 
-def get_docusaurus_client(base_url: str, filter_urls: list[str]) -> DocusaurusLoader:
+def get_docusaurus_client(
+        base_url: str,
+        filter_urls: list[str]) -> DocusaurusLoader:
     """
     Returns a DocusaurusLoader configured to scrape documentation from the specified base URL.
 
@@ -19,8 +21,7 @@ def get_docusaurus_client(base_url: str, filter_urls: list[str]) -> DocusaurusLo
 
 
 def load_pages(
-    base_url: str, filter_urls: list[str]
-) -> Generator[Document, None, None]:
+        base_url: str, filter_urls: list[str]) -> Generator[Document, None, None]:
     docusaurus_client = get_docusaurus_client(base_url, filter_urls)
     results = docusaurus_client.aload()
     yield from results

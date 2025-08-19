@@ -1,10 +1,9 @@
 import functools
 from enum import Enum
 
-from langchain_neo4j import Neo4jGraph
-from langchain_neo4j.graphs.graph_document import GraphDocument
-from langchain_neo4j import Neo4jVector
 from langchain_core.embeddings import Embeddings
+from langchain_neo4j import Neo4jGraph, Neo4jVector
+from langchain_neo4j.graphs.graph_document import GraphDocument
 from loguru import logger
 
 from app.core.config import config
@@ -27,7 +26,8 @@ class Store:
         self.embeddings = embeddings
 
     def store_graph(self, docs: list[GraphDocument]) -> None:
-        self.graph.add_graph_documents(docs, baseEntityLabel=True, include_source=True)
+        self.graph.add_graph_documents(
+            docs, baseEntityLabel=True, include_source=True)
         self.graph.query(
             "CREATE FULLTEXT INDEX entity IF NOT EXISTS FOR (e:__Entity__) ON EACH [e.id]"
         )

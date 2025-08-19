@@ -16,16 +16,18 @@ class ModeEnum(str, Enum):
 
 class LLMSettings(BaseModel):
     provider: Optional[str] = Field(
-        default="ollama", description="The provider for the LLM"
-    )
-    model: Optional[str] = Field(default=None, description="The model for the LLM")
+        default="ollama",
+        description="The provider for the LLM")
+    model: Optional[str] = Field(
+        default=None,
+        description="The model for the LLM")
     temperature: Optional[float] = Field(
-        default=0.1, description="The temperature for the LLM"
-    )
+        default=0.1, description="The temperature for the LLM")
 
     @field_validator("model", mode="before")
-    def validate_model(cls, v, values):
-        provider = values.data.get("provider", "openrouter")
+    @classmethod
+    def validate_model(cls, v, info):
+        provider = info.data.get("provider", "openrouter")
         openrouter_models = [
             "databricks/dbrx-instruct:nitro",
             "mistralai/mistral-7b-instruct",
@@ -45,30 +47,27 @@ class LLMSettings(BaseModel):
             "gemma2:9b",
             "wizardlm2:7b",
             "phi3:14b",
-            "qwen3:30b"
+            "qwen3:30b",
         ]
 
         # If model is None, set a default based on the provider
         if v is None:
             if provider == "openrouter":
                 return "openai/gpt-4o"
-            elif provider == "openai":
+            if provider == "openai":
                 return "gpt-4o"
-            elif provider == "ollama":
+            if provider == "ollama":
                 return "qwen3:30b"
 
         if provider == "openrouter" and v not in openrouter_models:
             raise ValueError(
-                f"For provider 'openrouter', model must be one of {openrouter_models}"
-            )
-        elif provider == "openai" and v not in openai_models:
+                f"For provider 'openrouter', model must be one of {openrouter_models}")
+        if provider == "openai" and v not in openai_models:
             raise ValueError(
-                f"For provider 'openai', model must be one of {openai_models}"
-            )
-        elif provider == "ollama" and v not in ollama_models:
+                f"For provider 'openai', model must be one of {openai_models}")
+        if provider == "ollama" and v not in ollama_models:
             raise ValueError(
-                f"For provider 'ollama', model must be one of {ollama_models}"
-            )
+                f"For provider 'ollama', model must be one of {ollama_models}")
 
         return v
 
@@ -93,6 +92,7 @@ class Config(BaseSettings):
         logger.info(json.dumps(config_dict, indent=2))
 
     MODE: ModeEnum = ModeEnum.development
+
     @property
     def LLM_SETTINGS(self) -> LLMSettings:
         return LLMSettings(
@@ -100,6 +100,7 @@ class Config(BaseSettings):
             model=self.LLM_MODEL_ID,
             temperature=0,
         )
+
     PROJECT_NAME: str = "rag-api"
     API_STR: str = "/api"
     OPENROUTER_API_BASE: str = os.environ["OPENROUTER_API_BASE"]
@@ -109,15 +110,28 @@ class Config(BaseSettings):
     NEO4J_URI: str = os.environ["NEO4J_URI"]
     NEO4J_USERNAME: str = os.environ["NEO4J_USERNAME"]
     NEO4J_PASSWORD: str = os.environ["NEO4J_PASSWORD"]
-    
+
     # Add the missing fields that were causing validation errors
-    LLM_API_PROVIDER: str = Field(default="openrouter", description="LLM API provider")
-    LLM_MODEL_ID: str = Field(default="openai/gpt-4o", description="LLM model ID")
-    NEO4J_VECTOR_INDEX: str = Field(default="vector", description="Neo4j vector index name")
-    NEO4J_KEYWORD_INDEX: str = Field(default="keyword", description="Neo4j keyword index name")
-    TIKA_SERVER_URL: str = Field(default="http://localhost:9998", description="Tika server URL for content parsing")
-    FOLDER_INGEST_DIR: str = Field(default="./src/data/docs", description="Directory for folder ingestion")
-    
+    LLM_API_PROVIDER: str = Field(
+        default="openrouter",
+        description="LLM API provider")
+    LLM_MODEL_ID: str = Field(
+        default="openai/gpt-4o",
+        description="LLM model ID")
+    NEO4J_VECTOR_INDEX: str = Field(
+        default="vector",
+        description="Neo4j vector index name")
+    NEO4J_KEYWORD_INDEX: str = Field(
+        default="keyword",
+        description="Neo4j keyword index name")
+    TIKA_SERVER_URL: str = Field(
+        default="http://localhost:9998",
+        description="Tika server URL for content parsing",
+    )
+    FOLDER_INGEST_DIR: str = Field(
+        default="./src/data/docs", description="Directory for folder ingestion"
+    )
+
     @property
     def PROVIDERS(self) -> dict:
         return {
@@ -126,21 +140,25 @@ class Config(BaseSettings):
                 "api_key": self.OPENROUTER_API_KEY,
             },
             "ollama": {"base_url": f"{self.OLLAMA_API_BASE}/v1", "api_key": "ollama"},
-            # TODO: make OpenAI compatible
+            # NOTE: OpenAI integration planned for future implementation
             "openai": {
                 "base_url": "https://api.openai.com",
                 "api_key": "your_openai_api_key",
             },
         }
 
-    BACKEND_CORS_ORIGINS: list[Union[str, AnyHttpUrl]] = Field(default_factory=list)
+    BACKEND_CORS_ORIGINS: list[Union[str, AnyHttpUrl]] = Field(
+        default_factory=list)
 
     @field_validator("BACKEND_CORS_ORIGINS")
-    def assemble_cors_origins(cls, v: str | list[str]) -> list[str] | str:
+    @classmethod
+    def assemble_cors_origins(cls, v: str | list[str]) -> list[str]:
         if isinstance(v, str) and not v.startswith("["):
             return [i.strip() for i in v.split(",")]
-        elif isinstance(v, (list, str)):
+        if isinstance(v, list):
             return v
+        # Handle the case where v is a string that starts with "["
+        return v if isinstance(v, list) else []
 
     # model_config = SettingsConfigDict(case_sensitive=True, env_file=Path())
     class Config:

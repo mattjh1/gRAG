@@ -25,20 +25,24 @@ def _format_chat_history(chat_history: list[BaseMessage]) -> list:
         elif isinstance(message, AIMessage):
             buffer.append(message.content)
         else:
-            logger.warning(f"Unexpected message type in chat_history: {type(message)}")
+            logger.warning(
+                f"Unexpected message type in chat_history: {
+                    type(message)}"
+            )
     return buffer
 
 
 _search_query = RunnableBranch(
-    # If input includes chat_history, we condense it with the follow-up question
+    # If input includes chat_history, we condense it with the follow-up
+    # question
     (
         RunnableLambda(lambda x: bool(x.get("chat_history"))).with_config(  # type: ignore
             run_name="HasChatHistoryCheck"
         ),
         # Condense follow-up question and chat into a standalone_question
         RunnablePassthrough.assign(
-            chat_history=lambda x: _format_chat_history(x["chat_history"])
-        )
+            chat_history=lambda x: _format_chat_history(
+                x["chat_history"]))
         | CONDENSE_QUESTION_PROMPT
         | llm.get_llm_instance()
         | StrOutputParser(),

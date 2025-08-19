@@ -60,16 +60,14 @@ class DocScraper:
         driver = webdriver.Chrome(options=options)
         return driver
 
-    def _get_subpage_links(
-        self, url: str, subpage_patterns: list[str]
-    ) -> list[str | None]:
+    def _get_subpage_links(self, url: str,
+                           subpage_patterns: list[str]) -> list[str | None]:
         """Retrieves subpage links matching the specified patterns from the given URL."""
         self.driver.get(url)
         time.sleep(2)  # Wait for the page to load
 
         css_selector = ", ".join(
-            [f"a[href^='{pattern}']" for pattern in subpage_patterns]
-        )
+            [f"a[href^='{pattern}']" for pattern in subpage_patterns])
         links = self.driver.find_elements(By.CSS_SELECTOR, css_selector)
         subpage_links = [link.get_attribute("href") for link in links]
 
@@ -93,12 +91,18 @@ class DocScraper:
             "metadata": metadata,
         }
 
-    def _scrape_angular(self, urls: list[str]) -> Generator[dict[str, Any], None, None]:
+    def _scrape_angular(
+            self, urls: list[str]) -> Generator[dict[str, Any], None, None]:
         """Scrapes content specifically from Angular documentation URLs."""
-        subpage_patterns = ["/api/", "/cli/", "/errors/", "/extended-diagnostics/"]
+        subpage_patterns = [
+            "/api/",
+            "/cli/",
+            "/errors/",
+            "/extended-diagnostics/"]
         yield from self._scrape(urls, subpage_patterns)
 
-    def _scrape_react(self, urls: list[str]) -> Generator[dict[str, Any], None, None]:
+    def _scrape_react(
+            self, urls: list[str]) -> Generator[dict[str, Any], None, None]:
         """Scrapes content specifically from React documentation URLs."""
         subpage_patterns = ["/docs/"]
         yield from self._scrape(urls, subpage_patterns)
@@ -113,8 +117,9 @@ class DocScraper:
 
             subpage_links = self._get_subpage_links(url, subpage_patterns)
             for subpage_url in tqdm(
-                subpage_links, desc="Scraping subpages", leave=False
-            ):
+                    subpage_links,
+                    desc="Scraping subpages",
+                    leave=False):
                 if subpage_url is None:
                     continue
 
@@ -138,7 +143,8 @@ class DocScraper:
         else:
             supported_sources = ", ".join([e.name for e in DocURLs])
             raise ValueError(
-                f"Unsupported documentation source: {self.doc_urls}. Supported sources are: {supported_sources}"
+                f"Unsupported documentation source: {
+                    self.doc_urls}. Supported sources are: {supported_sources}"
             )
 
     def close_driver(self):

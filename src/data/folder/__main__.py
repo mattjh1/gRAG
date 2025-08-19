@@ -11,11 +11,13 @@ from data.graph_transformer_settings import dracula_settings, ms_graphrag_settin
 from data.store import get_default_store
 
 
-def pipeline(paths: Generator[Path, None, None], embed: bool, graph: bool) -> None:
+def pipeline(paths: Generator[Path, None, None],
+             embed: bool, graph: bool) -> None:
     db = get_default_store()
     for path in paths:
         if graph and embed:
-            if docs := transform.as_graph_documents(path, ms_graphrag_settings):
+            if docs := transform.as_graph_documents(
+                    path, ms_graphrag_settings):
                 logger.info(f"Storing {len(docs)} graph documents in db")
                 db.store_graph(docs)
                 transform.as_vectors_from_graph(db.embeddings)
@@ -29,7 +31,8 @@ def pipeline(paths: Generator[Path, None, None], embed: bool, graph: bool) -> No
                 db.store_graph(docs)
         else:
             # docs = transform.as_graph_documents(path, ms_graphrag_settings)
-            raise ValueError("You need to select to create graph, embeddings or both")
+            raise ValueError(
+                "You need to select to create graph, embeddings or both")
 
 
 @click.command()
@@ -58,8 +61,11 @@ def pipeline(paths: Generator[Path, None, None], embed: bool, graph: bool) -> No
 @click.option("-e", "--embed", type=bool, required=False, default=False)
 @click.option("-g", "--graph", type=bool, required=False, default=False)
 def folder(
-    directory: str, glob: str, since: Optional[date], embed: bool, graph: bool
-) -> None:
+        directory: str,
+        glob: str,
+        since: Optional[date],
+        embed: bool,
+        graph: bool) -> None:
     """Ingest files from folder as documents."""
     since_date = since if since else date.min
     pipeline(extract.directory(directory, glob, since_date), embed, graph)

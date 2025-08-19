@@ -6,9 +6,11 @@ from app.core.config import LLMSettings
 from app.util.chains import get_ner_chain
 from data.store import get_default_store
 
+
 def get_graph_instance():
     store = get_default_store()
     return store.graph
+
 
 def generate_full_text_query(input: str) -> str:
     """
@@ -28,128 +30,212 @@ def generate_full_text_query(input: str) -> str:
     return full_text_query.strip()
 
 
-# Fulltext index query
 def structured_retriever(question: str) -> str:
     """
     Collects the neighborhood of entities mentioned in the question.
+
+    Args:
+        question: The input question to extract entities from
+
+    Returns:
+        Formatted string containing entity neighborhoods, or empty string on error
     """
-    result = ""
-    from data.store import get_default_store
-    store = get_default_store()
-    
-    try:
-        # Retrieve named entities from the question
-        entities = get_ner_chain().invoke({"input": question})
-        
-        # Handle different response types
-        entity_names = []
-        
-        if hasattr(entities, 'names'):
-            # Expected structured response
-            entity_names = entities.names
-        elif hasattr(entities, 'tool_calls') and entities.tool_calls:
-            # Tool calling response
-            for tool_call in entities.tool_calls:
-                if hasattr(tool_call, 'args'):
-                    if hasattr(tool_call.args, 'names'):
-                        entity_names.extend(tool_call.args.names)
-                    elif hasattr(tool_call.args, 'entities'):
-                        entity_names.extend(tool_call.args.entities)
-        elif hasattr(entities, 'content'):
-            # AIMessage response - parse the content
-            logger.info(f"Got AIMessage content: {entities.content}")
-            content = entities.content.strip()
-            
-            # Try to extract entities from the text response
-            # This is a simple parser - you might need to adjust based on actual output format
-            if content:
-                # Look for common patterns like JSON, lists, or comma-separated values
-                import re
-                import json
-                
-                # Try JSON first
-                try:
-                    if content.startswith('{') or content.startswith('['):
-                        parsed = json.loads(content)
-                        if isinstance(parsed, dict):
-                            entity_names = parsed.get('names', parsed.get('entities', []))
-                        elif isinstance(parsed, list):
-                            entity_names = parsed
-                except json.JSONDecodeError:
-                    pass
-                
-                # Try comma-separated or newline-separated
-                if not entity_names:
-                    # Look for patterns like "Entities: name1, name2, name3"
-                    patterns = [
-                        r'(?:entities|names):\s*([^\n]+)',
-                        r'(?:entities|names)\s*=\s*([^\n]+)',
-                        r'\[([^\]]+)\]',  # Look for [entity1, entity2]
-                    ]
-                    
-                    for pattern in patterns:
-                        match = re.search(pattern, content.lower())
-                        if match:
-                            entities_str = match.group(1)
-                            entity_names = [e.strip().strip('"\'') for e in entities_str.split(',')]
-                            break
-                
-                # Fallback: extract capitalized words
-                if not entity_names:
-                    entity_names = re.findall(r'\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b', content)
-        
-        # Final fallback: extract from question itself
-        if not entity_names:
-            logger.warning("No entities extracted, using question words as fallback")
-            words = question.split()
-            entity_names = [word.strip('.,!?') for word in words if word.strip('.,!?').istitle() and len(word) > 2]
-        
-        logger.info(f"Extracted entities: {entity_names}")
-        
-        # Process each entity
-        for entity in entity_names:
-            if not entity or not isinstance(entity, str):
-                continue
-                
-            query = """
-            CALL db.index.fulltext.queryNodes('entity', $query, {limit:2})
-            YIELD node, score
-            CALL {
-                WITH node
-                MATCH (node)-[r:!MENTIONS]->(neighbor)
-                RETURN
-                    'Node: (id: ' + node.id + ', description: ' + coalesce(node.description, 'N/A') + ') ' +
-                    '-[' + type(r) + ' (description: ' + coalesce(r.description, 'N/A') + ') ]-> ' +
-                    '(id: ' + neighbor.id + ', description: ' + coalesce(neighbor.description, 'N/A') + ')' AS output
-                UNION ALL
-                WITH node
-                MATCH (node)<-[r:!MENTIONS]-(neighbor)
-                RETURN
-                    '(id: ' + neighbor.id + ', description: ' + coalesce(neighbor.description, 'N/A') + ') ' +
-                    '-[' + type(r) + ' (description: ' + coalesce(r.description, 'N/A') + ') ]-> ' +
-                    '(id: ' + node.id + ', description: ' + coalesce(node.description, 'N/A') + ')' AS output
-            }
-            RETURN output LIMIT 50
-            """
-            
-            try:
-                # Execute the query and get the response
-                response = store.graph.query(
-                    query, {"query": generate_full_text_query(entity)}
-                )
-                
-                # Append the query results to the final result
-                result += "\n".join([el["output"] for el in response])
-                
-            except Exception as e:
-                logger.error(f"Error querying entity '{entity}': {e}")
-                continue
-                
-    except Exception as e:
-        logger.error(f"Error in structured_retriever: {e}")
+    if not question or not question.strip():
+        logger.warning("Empty question provided to structured_retriever")
         return ""
-    
-    return result
+
+    from data.store import get_default_store
+
+    store = get_default_store()
+
+    try:
+        entity_names = _extract_entities_from_question(question)
+        logger.info(f"Extracted entities: {entity_names}")
+
+        if not entity_names:
+            logger.warning("No entities found in question")
+            return ""
+
+        return _query_entity_neighborhoods(store, entity_names)
+
+    except Exception as e:
+        logger.error(f"Error in structured_retriever: {e}", exc_info=True)
+        return ""
+
+
+def _extract_entities_from_question(question: str) -> List[str]:
+    """Extract named entities from the question using various strategies."""
+    try:
+        entities = get_ner_chain().invoke({"input": question})
+        entity_names = _parse_entity_response(entities)
+
+        # Fallback: extract from question itself if no entities found
+        if not entity_names:
+            logger.warning(
+                "No entities extracted from NER, using fallback extraction")
+            entity_names = _fallback_entity_extraction(question)
+
+        # Clean and deduplicate entities
+        return _clean_entity_names(entity_names)
+
+    except Exception as e:
+        logger.error(f"Error extracting entities: {e}")
+        return _fallback_entity_extraction(question)
+
+
+def _parse_entity_response(entities) -> List[str]:
+    """Parse entities from different response types."""
+    entity_names = []
+
+    if hasattr(entities, "names"):
+        entity_names = entities.names
+    elif hasattr(entities, "tool_calls") and entities.tool_calls:
+        entity_names = _extract_from_tool_calls(entities.tool_calls)
+    elif hasattr(entities, "content"):
+        entity_names = _parse_content_response(entities.content)
+
+    return entity_names
+
+
+def _extract_from_tool_calls(tool_calls) -> List[str]:
+    """Extract entity names from tool calling responses."""
+    entity_names = []
+    for tool_call in tool_calls:
+        if hasattr(tool_call, "args"):
+            if hasattr(tool_call.args, "names"):
+                entity_names.extend(tool_call.args.names)
+            elif hasattr(tool_call.args, "entities"):
+                entity_names.extend(tool_call.args.entities)
+    return entity_names
+
+
+def _parse_content_response(content: str) -> List[str]:
+    """Parse entities from AIMessage content using various strategies."""
+    if not content:
+        return []
+
+    content = content.strip()
+    entity_names = []
+
+    # Try JSON parsing first
+    entity_names = _try_json_parsing(content)
+    if entity_names:
+        return entity_names
+
+    # Try regex patterns
+    entity_names = _try_regex_patterns(content)
+    if entity_names:
+        return entity_names
+
+    # Fallback: extract capitalized words
+    return re.findall(r"\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b", content)
+
+
+def _try_json_parsing(content: str) -> List[str]:
+    """Attempt to parse entities from JSON content."""
+    try:
+        if content.startswith(("{", "[")):
+            parsed = json.loads(content)
+            if isinstance(parsed, dict):
+                return parsed.get("names", parsed.get("entities", []))
+            elif isinstance(parsed, list):
+                return parsed
+    except json.JSONDecodeError:
+        pass
+    return []
+
+
+def _try_regex_patterns(content: str) -> List[str]:
+    """Try to extract entities using regex patterns."""
+    patterns = [
+        r"(?:entities|names):\s*([^\n]+)",
+        r"(?:entities|names)\s*=\s*([^\n]+)",
+        r"\[([^\]]+)\]",  # Look for [entity1, entity2]
+    ]
+
+    for pattern in patterns:
+        match = re.search(pattern, content.lower())
+        if match:
+            entities_str = match.group(1)
+            return [e.strip().strip("\"'") for e in entities_str.split(",")]
+
+    return []
+
+
+def _fallback_entity_extraction(question: str) -> List[str]:
+    """Fallback method to extract potential entities from question text."""
+    words = question.split()
+    return [word.strip(".,!?") for word in words if word.strip(
+        ".,!?").istitle() and len(word) > 2]
+
+
+def _clean_entity_names(entity_names: List[str]) -> List[str]:
+    """Clean and deduplicate entity names."""
+    cleaned = []
+    seen = set()
+
+    for entity in entity_names:
+        if not entity or not isinstance(entity, str):
+            continue
+
+        # Clean the entity name
+        cleaned_entity = entity.strip().strip("\"'")
+        if cleaned_entity and cleaned_entity.lower() not in seen:
+            cleaned.append(cleaned_entity)
+            seen.add(cleaned_entity.lower())
+
+    return cleaned
+
+
+def _query_entity_neighborhoods(store, entity_names: List[str]) -> str:
+    """Query the graph database for entity neighborhoods."""
+    # Optimized query with better performance
+    query = """
+    CALL db.index.fulltext.queryNodes('entity', $query, {limit: 3})
+    YIELD node, score
+    CALL (node) {
+        WITH node
+        OPTIONAL MATCH (node)-[r_out:!MENTIONS]->(neighbor_out)
+        OPTIONAL MATCH (node)<-[r_in:!MENTIONS]-(neighbor_in)
+
+        WITH node, r_out, neighbor_out, r_in, neighbor_in
+        WHERE neighbor_out IS NOT NULL OR neighbor_in IS NOT NULL
+
+        RETURN
+            CASE
+                WHEN neighbor_out IS NOT NULL THEN
+                    'Node: ' + node.id + ' (' + coalesce(node.description, 'N/A') + ') ' +
+                    '-[' + type(r_out) + ']-> ' + neighbor_out.id + ' (' + coalesce(neighbor_out.description, 'N/A') + ')'
+                WHEN neighbor_in IS NOT NULL THEN
+                    neighbor_in.id + ' (' + coalesce(neighbor_in.description, 'N/A') + ') ' +
+                    '-[' + type(r_in) + ']-> ' + node.id + ' (' + coalesce(node.description, 'N/A') + ')'
+            END AS output
+    }
+    RETURN DISTINCT output
+    ORDER BY output
+    LIMIT 50
+    """
+
+    results = []
+
+    for entity in entity_names:
+        try:
+            response = store.graph.query(
+                query, {"query": generate_full_text_query(entity)})
+
+            entity_results = [el["output"] for el in response if el["output"]]
+            if entity_results:
+                results.append(f"--- Entity: {entity} ---")
+                results.extend(entity_results)
+                results.append("")  # Empty line for readability
+            else:
+                logger.info(f"No results found for entity: {entity}")
+
+        except Exception as e:
+            logger.error(f"Error querying entity '{entity}': {e}")
+            continue
+
+    return "\n".join(results).strip()
 
 
 def hybrid_retriever() -> Neo4jVector:

@@ -5,9 +5,7 @@ import pytest
 
 @pytest.fixture
 def mock_remove_lucene_chars():
-    with patch(
-        "langchain_community.vectorstores.neo4j_vector.remove_lucene_chars"
-    ) as mock:
+    with patch("langchain_community.vectorstores.neo4j_vector.remove_lucene_chars") as mock:
         yield mock
 
 
@@ -28,8 +26,7 @@ def mock_store():
     store_mock = MagicMock()
     store_mock.graph.query.return_value = [{"output": "Mocked output"}]
     store_mock.vectorstore.from_existing_index.return_value.similarity_search.return_value = [
-        MagicMock(page_content="Mocked page content")
-    ]
+        MagicMock(page_content="Mocked page content")]
     return store_mock
 
 

@@ -1,18 +1,20 @@
-from typing import List, Dict
-from langchain_core.runnables import Runnable
 import asyncio
+from typing import Dict, List
+
+from langchain_core.runnables import Runnable
+
+from app.util.chains import ConversationState, get_ner_chain
+from app.util.llm import get_llm_instance
 from app.util.planner import (
-    QueryPlanner,
     ExecutionPlan,
     ExecutionStep,
-    StepResult,
     FinalResult,
+    QueryPlanner,
+    StepResult,
 )
-from app.util.validators import ResponseValidator
 from app.util.retrievers import structured_retriever
-from app.util.chains import get_ner_chain, ConversationState
 from app.util.tools import graph_query_tool
-from app.util.llm import get_llm_instance
+from app.util.validators import ResponseValidator
 
 
 class AgenticGraphRAG:
@@ -88,9 +90,7 @@ class AgenticGraphRAG:
         result = await asyncio.to_thread(structured_retriever, query)
         return {"result": result}
 
-    async def _execute_relationship_traverse(
-        self, step: ExecutionStep, query: str
-    ) -> Dict:
+    async def _execute_relationship_traverse(self, query: str) -> Dict:
         """Execute relationship traversal in knowledge graph."""
         entities = await asyncio.to_thread(get_ner_chain().invoke, {"input": query})
         if len(entities.names) < 2:

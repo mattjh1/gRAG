@@ -17,9 +17,9 @@ class DataLoader:
     def __init__(self) -> None:
         self.db = get_default_store()
 
-    def load(
-        self, transformed_data: Union[list[GraphDocument], list[Document]]
-    ) -> None:
+    def load(self,
+             transformed_data: Union[list[GraphDocument],
+                                     list[Document]]) -> None:
         """
         Loads the transformed data into the target storage.
 

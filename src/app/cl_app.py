@@ -1,22 +1,29 @@
-import sys
+import asyncio
 import os
+import sys
 import uuid
 from typing import Any, Dict, List, Optional
+
 import chainlit as cl
+from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from langchain_core.runnables import Runnable, RunnableConfig
-from langchain_core.messages import HumanMessage, AIMessage, BaseMessage
 from loguru import logger
-import asyncio
+
+from app.util import get_rag_chain, get_summary_chain
+from app.util.agent import AgenticGraphRAG
+from app.util.chains import ConversationState
+from app.util.planner import QueryPlanner
+from app.util.response import ResponseParser, display_response_with_thinking_step
+from app.util.validators import ResponseValidator
 
 # Add the src directory to Python path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from app.util import get_rag_chain, get_summary_chain
-from app.util.agent import AgenticGraphRAG
-from app.util.planner import QueryPlanner
-from app.util.validators import ResponseValidator
-from app.util.chains import ConversationState
-from app.util.response import ResponseParser, display_response_with_thinking_step
+
+class SessionKeyError(Exception):
+    """Custom exception for session key errors."""
+
+    pass
 
 
 def set_session(key: str, value: Any) -> None:
@@ -29,7 +36,8 @@ def get_session(key: str) -> Any:
     default_ = object()
     value = cl.user_session.get(key, default=default_)
     if value == default_:
-        raise Exception(f"Object '{key}' not found in `cl.user_session`.")
+        raise SessionKeyError(
+            f"Object '{key}' not found in `cl.user_session`.")
     return value
 
 
@@ -42,7 +50,7 @@ async def get_domain_info():
         "top_entity_types": ["Character", "Theme", "Location"],
         "example_queries": """
 • "Analyze Jonathan Harker's psychological evolution throughout the novel"
-• "How does the theme of modernity vs. ancient evil develop through character interactions?"  
+• "How does the theme of modernity vs. ancient evil develop through character interactions?"
 • "Trace the symbolic significance of blood across different character perspectives"
 • "Compare narrative techniques in different character journal entries"
         """.strip(),
@@ -57,11 +65,11 @@ async def on_chat_start():
     welcome_message = f"""
 #  Agentic Knowledge Explorer
 
-I'm an AI agent that deeply understands your knowledge domain through an advanced knowledge graph. 
+I'm an AI agent that deeply understands your knowledge domain through an advanced knowledge graph.
 I can:
 
  **Plan multi-step analysis** across entities, themes, and concepts
- **Follow relationship paths** through interconnected information  
+ **Follow relationship paths** through interconnected information
 ✅ **Validate my reasoning** and provide confidence scores
  **Show my thinking process** as I work through complex questions
 
@@ -82,7 +90,7 @@ I can:
     rag_chain = get_rag_chain()
     summary_chain = get_summary_chain()
 
-    # NEW: Initialize agentic components
+    # Initialize agentic components
     query_planner = QueryPlanner()
     response_validator = ResponseValidator()
     agentic_rag = AgenticGraphRAG(
@@ -106,12 +114,9 @@ async def on_message(message: cl.Message):
     # Get session components
     conversation_state: ConversationState = get_session("conversation_state")
     agentic_rag: AgenticGraphRAG = get_session("agentic_rag")
-    query_planner: QueryPlanner = get_session("query_planner")
 
     # Step 1: Analyze query complexity
-    complexity_analysis = await analyze_query_complexity(
-        message.content, conversation_state
-    )
+    complexity_analysis = await analyze_query_complexity(message.content, conversation_state)
 
     if complexity_analysis["is_simple"]:
         # Simple query - use direct RAG
@@ -122,8 +127,8 @@ async def on_message(message: cl.Message):
 
 
 async def analyze_query_complexity(
-    query: str, conversation_state: ConversationState
-) -> Dict:
+        query: str,
+        conversation_state: ConversationState) -> Dict:
     """Determine if query needs agentic processing."""
 
     # Generic complexity indicators that work across domains
@@ -151,32 +156,41 @@ async def analyze_query_complexity(
         "correlations",
     ]
 
-    has_complexity_words = any(word in query.lower() for word in complexity_indicators)
+    has_complexity_words = any(word in query.lower()
+                               for word in complexity_indicators)
     has_multiple_concepts = len(query.split()) > 10
     has_conversation_context = len(conversation_state.get_messages()) > 0
 
     return {
-        "is_simple": not (has_complexity_words or has_multiple_concepts),
+        "is_simple": not (
+            has_complexity_words or has_multiple_concepts),
         "needs_planning": has_complexity_words,
         "needs_multi_step": any(
-            word in query.lower()
-            for word in ["trace", "throughout", "evolution", "cascading"]
-        ),
+            word in query.lower() for word in [
+                "trace",
+                "throughout",
+                "evolution",
+                "cascading"]),
         "needs_comparison": any(
-            word in query.lower()
-            for word in ["compare", "contrast", "similarities", "differences"]
-        ),
+            word in query.lower() for word in [
+                "compare",
+                "contrast",
+                "similarities",
+                "differences"]),
         "needs_relationship_analysis": any(
-            word in query.lower()
-            for word in ["connect", "relationship", "influence", "impact"]
-        ),
+            word in query.lower() for word in [
+                "connect",
+                "relationship",
+                "influence",
+                "impact"]),
         "context_dependent": has_conversation_context,
     }
 
 
 async def handle_simple_query(
-    message: cl.Message, conversation_state: ConversationState, rag_chain: Runnable
-):
+        message: cl.Message,
+        conversation_state: ConversationState,
+        rag_chain: Runnable):
     """Handle simple queries with proper streaming that separates thinking from answer."""
     query = {"question": message.content}
     chat_messages = conversation_state.get_messages()
@@ -220,7 +234,8 @@ async def handle_simple_query(
 
         # Stream to appropriate destination
         if in_think_tags and thinking_step:
-            # Update thinking step (note: chainlit steps don't support streaming)
+            # Update thinking step (note: chainlit steps don't support
+            # streaming)
             thinking_step.output = current_content
         elif main_msg:
             # Stream to main answer
@@ -236,18 +251,20 @@ async def handle_simple_query(
         await main_msg.update()
 
     # Extract clean answer for conversation state
-    thinking, clean_answer = ResponseParser.extract_think_and_answer(full_response)
+    _, clean_answer = ResponseParser.extract_think_and_answer(full_response)
 
     # Save clean answer to conversation state
     conversation_state.save_context(
-        inputs={"human": message.content}, outputs={"ai": clean_answer}
-    )
+        inputs={
+            "human": message.content}, outputs={
+            "ai": clean_answer})
 
 
 # Updated complex query handler for consistency
 async def handle_complex_query(
-    message: cl.Message, agentic_rag: AgenticGraphRAG, complexity_analysis: Dict
-):
+        message: cl.Message,
+        agentic_rag: AgenticGraphRAG,
+        complexity_analysis: Dict):
     """Handle complex queries with agentic processing."""
 
     try:
@@ -256,9 +273,7 @@ async def handle_complex_query(
         await planning_msg.send()
 
         # Generate execution plan
-        plan = await agentic_rag.create_execution_plan(
-            message.content, complexity_analysis
-        )
+        plan = await agentic_rag.create_execution_plan(message.content, complexity_analysis)
 
         # Update planning message with the plan
         plan_text = "## 📋 My Analysis Plan\n\n"
@@ -275,7 +290,8 @@ async def handle_complex_query(
         for i, step in enumerate(plan.steps, 1):
             # Each step gets its own chainlit step for better UX
             step_title = f"Step {i}: {step.description}"
-            async with cl.Step(name=step_title, type="tool") as step_display:
+            step_context = cl.Step(name=step_title, type="tool")
+            async with step_context as step_display:
                 try:
                     # Execute step
                     step_result = await agentic_rag.execute_step(step, message.content)
@@ -297,11 +313,9 @@ async def handle_complex_query(
                             else:
                                 # Join all non-empty string values
                                 values = [
-                                    str(v)
-                                    for v in data.values()
-                                    if v and str(v).strip()
-                                ]
-                                result_text = " ".join(values) if values else str(data)
+                                    str(v) for v in data.values() if v and str(v).strip()]
+                                result_text = " ".join(
+                                    values) if values else str(data)
                         else:
                             result_text = str(data)
                     else:
@@ -309,27 +323,29 @@ async def handle_complex_query(
 
                     # Parse step result for thinking vs summary
                     thinking, summary = ResponseParser.extract_think_and_answer(
-                        result_text
-                    )
+                        result_text)
 
                     if thinking:
-                        step_display.output = f"**🧠 Reasoning:**\n{thinking}\n\n**📝 Result:**\n{summary}"
+                        step_display.output = (
+                            f"**🧠 Reasoning:**\n{thinking}\n\n**📝 Result:**\n{summary}")
                     else:
                         step_display.output = summary or result_text
 
                     # Don't store the step_result object to avoid serialization issues
                     # Instead, store just basic metadata as a simple dict
                     step_display.generation = {
-                        "success": getattr(step_result, "success", True),
-                        "confidence": getattr(step_result, "confidence", 0),
-                        "execution_time": getattr(step_result, "execution_time", 0),
-                        "step_type": getattr(step, "query_type", "unknown"),
-                    }
+                        "success": getattr(
+                            step_result, "success", True), "confidence": getattr(
+                            step_result, "confidence", 0), "execution_time": getattr(
+                            step_result, "execution_time", 0), "step_type": getattr(
+                            step, "query_type", "unknown"), }
 
                 except Exception as e:
                     import traceback
 
-                    error_details = f"❌ **Error in Step {i}:** {str(e)}\n\n**Debug Info:**\n```\n{traceback.format_exc()}\n```"
+                    error_details = f"❌ **Error in Step {i}:** {
+                        str(e)
+                    }\n\n**Debug Info:**\n```\n{traceback.format_exc()}\n```"
                     step_display.output = error_details
                     print(f"Step execution error: {e}")  # For server logs
                     # Add a None result to maintain step count
@@ -337,34 +353,38 @@ async def handle_complex_query(
                     continue
 
         # Step 3: Synthesize results with enhanced display
-        async with cl.Step(
-            name="🔄 Synthesizing Results", type="tool"
-        ) as synthesis_step:
+        step_context = cl.Step(name="🔄 Synthesizing Results", type="tool")
+        async with step_context as synthesis_step:
             try:
-                # Filter successful results (remove None values from failed steps)
+                # Filter successful results (remove None values from failed
+                # steps)
                 successful_results = [
-                    r for r in results if r is not None and getattr(r, "success", False)
-                ]
+                    r for r in results if r is not None and getattr(
+                        r, "success", False)]
 
                 if not successful_results:
                     synthesis_step.output = (
                         "❌ No successful steps to synthesize - all steps failed"
                     )
-                    raise Exception("No successful step results to synthesize")
+                    raise RuntimeError(
+                        "No successful step results to synthesize")
 
-                synthesis_step.output = (
-                    f"🔄 Processing {len(successful_results)} successful results..."
-                )
+                synthesis_step.output = f"🔄 Processing {
+                    len(successful_results)} successful results..."
 
                 final_result = await agentic_rag.synthesize_results(
                     successful_results, message.content
                 )
-                synthesis_step.output = f"✅ Successfully combined {len(successful_results)} findings into comprehensive analysis"
+                synthesis_step.output = f"✅ Successfully combined {
+                    len(successful_results)
+                } findings into comprehensive analysis"
 
             except Exception as e:
                 import traceback
 
-                error_details = f"❌ Synthesis failed: {str(e)}\n\n**Debug Info:**\n```\n{traceback.format_exc()}\n```"
+                error_details = f"❌ Synthesis failed: {
+                    str(e)
+                }\n\n**Debug Info:**\n```\n{traceback.format_exc()}\n```"
                 synthesis_step.output = error_details
                 print(f"Synthesis error: {e}")  # For server logs
                 raise
@@ -381,16 +401,15 @@ async def handle_complex_query(
         # Step 5: Show metadata in a clean format
         metadata_content = f"""## 📊 Analysis Summary
 
-**🎯 Confidence Level:** {final_result.confidence}%  
-**📚 Sources Consulted:** {len(final_result.sources)} documents  
+**🎯 Confidence Level:** {final_result.confidence}%
+**📚 Sources Consulted:** {len(final_result.sources)} documents
 **⏱️ Steps Completed:** {len([r for r in results if r.success])}/{len(results)}
 """
 
         # Add limitations if present
         if final_result.limitations:
-            thinking, clean_limitations = ResponseParser.extract_think_and_answer(
-                final_result.limitations
-            )
+            _, clean_limitations = ResponseParser.extract_think_and_answer(
+                final_result.limitations)
             metadata_content += f"\n**⚠️ Analysis Limitations:**\n{clean_limitations}"
 
         # Add collapsible sources section
@@ -408,9 +427,8 @@ async def handle_complex_query(
         await cl.Message(content=metadata_content).send()
 
         # Save clean answer to conversation state
-        thinking, clean_answer = ResponseParser.extract_think_and_answer(
-            final_result.answer
-        )
+        _, clean_answer = ResponseParser.extract_think_and_answer(
+            final_result.answer)
         agentic_rag.memory.save_context(
             inputs={"human": message.content}, outputs={"ai": clean_answer}
         )
@@ -431,42 +449,41 @@ async def handle_complex_query(
 
         # Fallback to simple query
         try:
-            await handle_simple_query(
-                message, agentic_rag.memory, agentic_rag.base_rag_chain
-            )
+            await handle_simple_query(message, agentic_rag.memory, agentic_rag.base_rag_chain)
         except Exception as fallback_error:
-            await cl.Message(
-                content=f"❌ **Fallback also failed:** {str(fallback_error)}"
-            ).send()
+            await cl.Message(content=f"❌ **Fallback also failed:** {str(fallback_error)}").send()
 
 
-def infer_domain_name(entity_types: List[str], sample_entities: List[str]) -> str:
+def infer_domain_name(
+        entity_types: List[str],
+        sample_entities: List[str]) -> str:
     """Infer domain name from entity patterns."""
 
-    # Check for common domain patterns
+    # Check for common domain patterns - reduce return statements
     if any(t in ["Person", "Character"] for t in entity_types):
-        if any("dracula" in str(e).lower() for e in sample_entities):
-            return "Literary Analysis (Dracula)"
-        return "Character/Person Analysis"
+        return (
+            "Literary Analysis (Dracula)"
+            if any("dracula" in str(e).lower() for e in sample_entities)
+            else "Character/Person Analysis"
+        )
 
-    if any(t in ["Company", "Organization"] for t in entity_types):
-        return "Business/Organization Analysis"
+    domain_type_map = {
+        ("Company", "Organization"): "Business/Organization Analysis",
+        ("Gene", "Protein", "Disease"): "Biomedical Knowledge",
+        ("Concept", "Topic", "Theme"): "Conceptual Knowledge",
+        ("Document", "Paper", "Article"): "Document Analysis",
+    }
 
-    if any(t in ["Gene", "Protein", "Disease"] for t in entity_types):
-        return "Biomedical Knowledge"
-
-    if any(t in ["Concept", "Topic", "Theme"] for t in entity_types):
-        return "Conceptual Knowledge"
-
-    if any(t in ["Document", "Paper", "Article"] for t in entity_types):
-        return "Document Analysis"
+    for type_group, domain_name in domain_type_map.items():
+        if any(t in type_group for t in entity_types):
+            return domain_name
 
     return "Knowledge Domain"
 
 
 def generate_example_queries(
-    domain_name: str, entity_types: List[str], sample_entities: List[str]
-) -> str:
+        entity_types: List[str],
+        sample_entities: List[str]) -> str:
     """Generate domain-appropriate example queries."""
 
     examples = []
@@ -474,31 +491,42 @@ def generate_example_queries(
     # Generic examples that work for any domain
     if sample_entities:
         entity_example = sample_entities[0] if sample_entities else "key entities"
-        examples.append(f'- **"Trace the relationships involving {entity_example}"**')
+        examples.append(
+            f'- **"Trace the relationships involving {entity_example}"**')
 
     if len(entity_types) >= 2:
         examples.append(
-            f'- **"Compare {entity_types[0]} and {entity_types[1]} entities in the knowledge graph"**'
+            f'- **"Compare {entity_types[0]} and {
+                entity_types[1]
+            } entities in the knowledge graph"**'
         )
 
     # Domain-specific examples
     if "Person" in entity_types or "Character" in entity_types:
-        examples.append('- **"Analyze the influence patterns between characters"**')
-        examples.append(
-            '- **"What are the cascading effects when key characters interact?"**'
+        examples.extend(
+            [
+                '- **"Analyze the influence patterns between characters"**',
+                '- **"What are the cascading effects when key characters interact?"**',
+            ]
         )
     elif "Company" in entity_types or "Organization" in entity_types:
-        examples.append(
-            '- **"How do organizational relationships impact business outcomes?"**'
-        )
-        examples.append('- **"Trace the network effects between companies"**')
+        examples.extend(
+            [
+                '- **"How do organizational relationships impact business outcomes?"**',
+                '- **"Trace the network effects between companies"**',
+            ])
     elif "Concept" in entity_types:
-        examples.append('- **"How do these concepts connect to form larger themes?"**')
-        examples.append('- **"What are the conceptual dependencies in this domain?"**')
-    else:
-        examples.append(
-            '- **"Analyze the relationship patterns in your knowledge graph"**'
+        examples.extend(
+            [
+                '- **"How do these concepts connect to form larger themes?"**',
+                '- **"What are the conceptual dependencies in this domain?"**',
+            ]
         )
-        examples.append('- **"How do different entities influence each other?"**')
+    else:
+        examples.extend(
+            [
+                '- **"Analyze the relationship patterns in your knowledge graph"**',
+                '- **"How do different entities influence each other?"**',
+            ])
 
     return "\n".join(examples)

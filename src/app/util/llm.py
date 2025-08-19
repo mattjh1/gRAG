@@ -11,21 +11,25 @@ class LLMClientManager:
     _ollama_instance: Optional[ChatOllama] = None
 
     @classmethod
-    def get_instance(cls, settings: Optional[LLMSettings] = None) -> ChatOpenAI:
+    def get_instance(
+            cls,
+            settings: Optional[LLMSettings] = None) -> ChatOpenAI:
         if cls._instance is None:
             cls._instance = cls._create_llm_client(settings)
         return cls._instance
 
     @classmethod
     def get_ollama_instance(
-        cls, settings: Optional[LLMSettings] = None
-    ) -> ChatOllama:
+            cls,
+            settings: Optional[LLMSettings] = None) -> ChatOllama:
         if cls._ollama_instance is None:
             cls._ollama_instance = cls._create_ollama_client(settings)
         return cls._ollama_instance
 
     @classmethod
-    def _create_llm_client(cls, settings: Optional[LLMSettings] = None) -> ChatOpenAI:
+    def _create_llm_client(
+            cls,
+            settings: Optional[LLMSettings] = None) -> ChatOpenAI:
         settings = settings or config.LLM_SETTINGS
 
         provider = config.PROVIDERS[settings.provider]
@@ -39,8 +43,8 @@ class LLMClientManager:
 
     @classmethod
     def _create_ollama_client(
-        cls, settings: Optional[LLMSettings] = None
-    ) -> ChatOllama:
+            cls,
+            settings: Optional[LLMSettings] = None) -> ChatOllama:
         settings = settings or config.LLM_SETTINGS
 
         if settings.provider == "ollama":
@@ -51,7 +55,8 @@ class LLMClientManager:
             }
             return ChatOllama(**options)
         else:
-            raise ValueError("Provider must be set to `ollama` to get `ollama` client")
+            raise ValueError(
+                "Provider must be set to `ollama` to get `ollama` client")
 
 
 get_llm_instance = LLMClientManager.get_instance

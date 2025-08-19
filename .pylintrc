@@ -1,0 +1,28 @@
+[MESSAGES CONTROL]
+disable=missing-module-docstring,
+        missing-class-docstring,
+        missing-function-docstring,
+        line-too-long,
+        trailing-whitespace,
+        import-outside-toplevel,
+        too-few-public-methods,
+        too-many-locals,
+        too-many-branches,
+        too-many-statements,
+        broad-exception-caught,
+        unused-import,
+        wrong-import-order,
+        trailing-newlines,
+        pointless-string-statement,
+        invalid-name
+
+[FORMAT]
+max-line-length=100
+
+[BASIC]
+good-names=i,j,k,ex,Run,_,e,id
+
+[DESIGN]
+max-args=10
+max-locals=20
+max-statements=60

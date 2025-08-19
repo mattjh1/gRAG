@@ -21,7 +21,7 @@ def semantic_split(doc: Document) -> list[Document]:
     from data.store import get_default_store
 
     store = get_default_store()
-    """semantic splitter of text using cosine similarity of sentences to set chunk size 
+    """semantic splitter of text using cosine similarity of sentences to set chunk size
     """
     semantic_text_splitter = SemanticChunker(
         store.embeddings, breakpoint_threshold_type="percentile"
